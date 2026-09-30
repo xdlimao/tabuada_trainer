@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Tabuada 2 a 9</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-mono-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+        /* Remover spinners nativos feios de input numérico */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+        /* Feedback sutil de erro e acerto */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        .animate-shake {
+            animation: shake 0.25s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+        @keyframes subtle-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .animate-subtle {
+            animation: subtle-pulse 0.2s ease-out;
+        }
+        /* Efeito de toque refinado */
+        .key-minimal {
+            transition: background-color 0.08s ease, transform 0.06s ease, border-color 0.08s ease;
+        }
+        .key-minimal:active {
+            transform: scale(0.96);
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-full flex flex-col items-center justify-center p-3 sm:p-4 selection:bg-zinc-700">
+
+    <main class="w-full max-w-sm sm:max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl relative flex flex-col justify-between overflow-hidden">
+        
+        <!-- Barra de Progresso do Cronômetro (Design ultra limpo e fino) -->
+        <div class="absolute top-0 left-0 right-0 h-1 bg-zinc-800/80 overflow-hidden">
+            <div id="timerBar" class="h-full bg-emerald-400 transition-all duration-75 ease-linear w-full origin-left"></div>
+        </div>
+
+        <!-- Topo: Informações principais -->
+        <header class="flex items-center justify-between pt-1 pb-4 border-b border-zinc-800/70">
+            <!-- Pontuação -->
+            <div class="flex flex-col">
+                <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-400">Pontos</span>
+                <span id="scoreDisplay" class="text-2xl font-bold font-mono-num text-white leading-tight">0</span>
+            </div>
+
+            <!-- Vidas minimalistas (indicadores geométricos elegantes) -->
+            <div class="flex flex-col items-center gap-1.5">
+                <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-400">Vidas</span>
+                <div class="flex items-center gap-1.5" id="livesContainer" title="Vidas restantes">
+                    <span class="life-dot w-2.5 h-2.5 rounded-full bg-rose-500 transition-all"></span>
+                    <span class="life-dot w-2.5 h-2.5 rounded-full bg-rose-500 transition-all"></span>
+                    <span class="life-dot w-2.5 h-2.5 rounded-full bg-rose-500 transition-all"></span>
+                </div>
+            </div>
+
+            <!-- Recorde & Som -->
+            <div class="flex items-center gap-3">
+                <div class="flex flex-col items-end">
+                    <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-400">Recorde</span>
+                    <span id="highScoreDisplay" class="text-xl font-medium font-mono-num text-zinc-300 leading-tight">0</span>
+                </div>
+                <button id="soundToggle" class="p-2 rounded-xl text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/70 transition-colors" title="Alternar som">
+                    <span id="soundIcon" class="text-sm">🔊</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Informações de Contexto -->
+        <div class="flex items-center justify-between text-xs text-zinc-400 mt-3 px-1">
+            <span id="badgeTable" class="font-medium text-zinc-300">Tabuada do 2</span>
+            <span id="timerCountdown" class="font-mono-num text-zinc-300 font-medium">10.0s</span>
+        </div>
+
+        <!-- Área da Pergunta (Sem cards excessivos, tipografia forte e direta) -->
+        <div id="cardContainer" class="my-5 py-6 rounded-2xl bg-zinc-950/60 border border-zinc-800/50 flex flex-col items-center justify-center transition-all">
+            <div id="equationDisplay" class="text-5xl sm:text-6xl font-bold font-mono-num tracking-tight text-white flex items-center justify-center gap-3">
+                <span id="factorA">2</span>
+                <span class="text-zinc-500 font-normal">×</span>
+                <span id="factorB">2</span>
+            </div>
+
+            <p id="feedbackText" class="text-xs font-medium text-zinc-400 mt-3 h-4 tracking-wide text-center">
+                Digite o resultado
+            </p>
+        </div>
+
+        <!-- Campo de Input (Minimalista com foco elegante) -->
+        <div class="relative mb-4">
+            <input 
+                type="number" 
+                id="numInput" 
+                pattern="[0-9]*" 
+                inputmode="numeric" 
+                autocomplete="off"
+                placeholder="?" 
+                class="w-full text-center text-3xl sm:text-4xl font-bold font-mono-num py-2.5 px-4 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-700 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+            />
+        </div>
+
+        <!-- Teclado Numérico Minimalista -->
+        <div class="grid grid-cols-3 gap-2 select-none">
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="1">1</button>
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="2">2</button>
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="3">3</button>
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="4">4</button>
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="5">5</button>
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="6">6</button>
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="7">7</button>
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="8">8</button>
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="9">9</button>
+            
+            <button type="button" id="btnClear" class="key-minimal bg-zinc-800/30 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 text-sm font-medium py-3 rounded-xl border border-zinc-800/60 flex items-center justify-center active:bg-zinc-700" title="Apagar">
+                ⌫
+            </button>
+            <button type="button" class="key-btn key-minimal bg-zinc-800/60 hover:bg-zinc-800 text-zinc-100 font-mono-num text-xl font-medium py-3 rounded-xl border border-zinc-800/80 active:bg-zinc-700" data-val="0">0</button>
+            <button type="button" id="btnSubmit" class="key-minimal bg-zinc-100 hover:bg-white text-zinc-950 text-sm font-bold py-3 rounded-xl flex items-center justify-center active:bg-zinc-300" title="Confirmar">
+                OK
+            </button>
+        </div>
+
+        <!-- Overlay: Início Minimalista -->
+        <div id="startOverlay" class="absolute inset-0 bg-zinc-900/95 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 text-center">
+            <h1 class="text-2xl font-bold tracking-tight text-white mb-1">
+                Tabuada 2 ao 9
+            </h1>
+            <p class="text-zinc-400 text-xs mb-6 max-w-xs leading-relaxed">
+                Treino sequencial rotativo sem multiplicadores 1 e 10. Responda antes do tempo zerar.
+            </p>
+
+            <div class="w-full max-w-xs bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4 text-xs text-zinc-400 space-y-2.5 mb-6 text-left">
+                <div class="flex items-center justify-between">
+                    <span>Sequência</span>
+                    <span class="text-zinc-200 font-medium">Tabuadas do 2 ao 9</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span>Multiplicadores</span>
+                    <span class="text-zinc-200 font-medium">2 a 9 rotativos</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span>Tempo por questão</span>
+                    <span class="text-zinc-200 font-medium font-mono-num">10.0s → 3.0s</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span>Vidas</span>
+                    <span class="text-zinc-200 font-medium">3 chances</span>
+                </div>
+            </div>
+
+            <button id="btnStart" class="w-full max-w-xs py-3 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold text-sm rounded-xl transition-all active:scale-[0.98]">
+                Começar Treino
+            </button>
+        </div>
+
+        <!-- Overlay: Fim de Jogo Minimalista -->
+        <div id="gameOverOverlay" class="hidden absolute inset-0 bg-zinc-900/95 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 text-center">
+            <h2 class="text-2xl font-bold text-white mb-1">Fim de Jogo</h2>
+            <p id="gameOverSub" class="text-zinc-400 text-xs mb-5">Sessão finalizada.</p>
+
+            <div class="w-full max-w-xs bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4 space-y-3 mb-6 font-mono-num text-xs">
+                <div class="flex justify-between items-center pb-2 border-b border-zinc-800">
+                    <span class="text-zinc-400 font-sans">Acertos totais</span>
+                    <span id="finalScore" class="text-lg font-bold text-white">0</span>
+                </div>
+                <div class="flex justify-between items-center pb-2 border-b border-zinc-800">
+                    <span class="text-zinc-400 font-sans">Velocidade final</span>
+                    <span id="finalSpeed" class="text-sm font-medium text-zinc-300">10.0s</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-zinc-400 font-sans">Melhor recorde</span>
+                    <span id="finalBest" class="text-sm font-medium text-zinc-300">0</span>
+                </div>
+            </div>
+
+            <button id="btnRestart" class="w-full max-w-xs py-3 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold text-sm rounded-xl transition-all active:scale-[0.98]">
+                Jogar Novamente
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        /* Audio Synthesizer discreto e suave */
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playTone(freq, type = 'sine', duration = 0.12, gainVal = 0.08) {
+                if (!this.enabled || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {
+                    // Fallback silencioso
+                }
+            }
+
+            correct() {
+                if (!this.enabled || !this.ctx) return;
+                this.playTone(587.33, 'sine', 0.08, 0.09); // D5
+                setTimeout(() => this.playTone(880.00, 'sine', 0.12, 0.09), 60); // A5
+            }
+
+            wrong() {
+                if (!this.enabled || !this.ctx) return;
+                this.playTone(220, 'triangle', 0.15, 0.12);
+                setTimeout(() => this.playTone(164.81, 'triangle', 0.2, 0.12), 80);
+            }
+
+            tick() {
+                this.playTone(700, 'sine', 0.03, 0.02);
+            }
+
+            click() {
+                this.playTone(500, 'sine', 0.02, 0.02);
+            }
+
+            gameOver() {
+                if (!this.enabled || !this.ctx) return;
+                [330, 293, 220].forEach((f, i) => {
+                    setTimeout(() => this.playTone(f, 'triangle', 0.18, 0.1), i * 90);
+                });
+            }
+        }
+
+        const sound = new SoundFX();
+
+        // Elementos DOM
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const livesContainer = document.getElementById('livesContainer');
+        const timerCountdown = document.getElementById('timerCountdown');
+        const timerBar = document.getElementById('timerBar');
+        const factorA = document.getElementById('factorA');
+        const factorB = document.getElementById('factorB');
+        const badgeTable = document.getElementById('badgeTable');
+        const feedbackText = document.getElementById('feedbackText');
+        const cardContainer = document.getElementById('cardContainer');
+        const numInput = document.getElementById('numInput');
+        const startOverlay = document.getElementById('startOverlay');
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const finalScore = document.getElementById('finalScore');
+        const finalSpeed = document.getElementById('finalSpeed');
+        const finalBest = document.getElementById('finalBest');
+        const btnStart = document.getElementById('btnStart');
+        const btnRestart = document.getElementById('btnRestart');
+        const btnClear = document.getElementById('btnClear');
+        const btnSubmit = document.getElementById('btnSubmit');
+        const soundToggle = document.getElementById('soundToggle');
+        const soundIcon = document.getElementById('soundIcon');
+
+        // Estado do Jogo
+        let score = 0;
+        let lives = 3;
+        let highScore = parseInt(localStorage.getItem('tabuada_2_9_highscore') || '0', 10);
+        const TABLES = [2, 3, 4, 5, 6, 7, 8, 9];
+        let currentTableIndex = 0;
+        let currentFactorA = 2;
+        let currentFactorB = 2;
+        let currentAnswer = 0;
+        
+        let tableLists = {};
+        let loopCount = 0;
+
+        function shuffle(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        /**
+         * Inicializa as listas de multiplicadores (2 ao 9, sem 1 e 10)
+         */
+        function resetTabuadaLists() {
+            const baseNumbers = [2, 3, 4, 5, 6, 7, 8, 9];
+            TABLES.forEach(num => {
+                tableLists[num] = shuffle(baseNumbers);
+            });
+        }
+
+        let timerInterval = null;
+        let timeLeft = 10.0;
+        let currentAllowedTime = 10.0;
+        let isGameRunning = false;
+        let lastTickSecond = -1;
+
+        highScoreDisplay.textContent = highScore;
+
+        function calculateAllowedTime(currentScore) {
+            const calculated = 10.0 - (currentScore * 0.18);
+            return Math.max(3.0, parseFloat(calculated.toFixed(1)));
+        }
+
+        function updateLivesUI() {
+            const dots = livesContainer.querySelectorAll('.life-dot');
+            dots.forEach((dot, idx) => {
+                if (idx < lives) {
+                    dot.className = "life-dot w-2.5 h-2.5 rounded-full bg-rose-500 transition-all";
+                } else {
+                    dot.className = "life-dot w-2.5 h-2.5 rounded-full bg-zinc-800 transition-all";
+                }
+            });
+        }
+
+        function nextQuestion() {
+            if (!isGameRunning) return;
+
+            loopCount++;
+
+            // A cada 9 loops completos, reinicia e reembaralha para a 10ª rodada ser diferente
+            if (loopCount > 9) {
+                resetTabuadaLists();
+                loopCount = 1;
+            }
+
+            // Avança sequencialmente de 2 a 9
+            currentFactorA = TABLES[currentTableIndex];
+            currentTableIndex = (currentTableIndex + 1) % TABLES.length;
+
+            // Retira do início e manda pro final da fila
+            const currentList = tableLists[currentFactorA];
+            currentFactorB = currentList.shift();
+            currentList.push(currentFactorB);
+
+            currentAnswer = currentFactorA * currentFactorB;
+
+            // Atualiza equação
+            factorA.textContent = currentFactorA;
+            factorB.textContent = currentFactorB;
+            badgeTable.textContent = `Tabuada do ${currentFactorA}`;
+
+            // Configuração do cronômetro para esta rodada
+            currentAllowedTime = calculateAllowedTime(score);
+            timeLeft = currentAllowedTime;
+            lastTickSecond = -1;
+
+            numInput.value = '';
+            focusInput();
+
+            // Animação sutil no card
+            cardContainer.classList.remove('animate-subtle');
+            void cardContainer.offsetWidth;
+            cardContainer.classList.add('animate-subtle');
+
+            renderTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            const updateIntervalMs = 50;
+
+            timerInterval = setInterval(() => {
+                if (!isGameRunning) {
+                    clearInterval(timerInterval);
+                    return;
+                }
+
+                timeLeft -= updateIntervalMs / 1000;
+
+                const currentSec = Math.ceil(timeLeft);
+                if (timeLeft <= 2.2 && currentSec !== lastTickSecond && currentSec > 0) {
+                    lastTickSecond = currentSec;
+                    sound.tick();
+                }
+
+                if (timeLeft <= 0) {
+                    timeLeft = 0;
+                    renderTimer();
+                    handleTimeout();
+                } else {
+                    renderTimer();
+                }
+            }, updateIntervalMs);
+        }
+
+        function renderTimer() {
+            const percentage = Math.max(0, (timeLeft / currentAllowedTime) * 100);
+            timerBar.style.width = `${percentage}%`;
+            timerCountdown.textContent = `${timeLeft.toFixed(1)}s`;
+
+            // Transição limpa de cor da barra
+            if (percentage > 50) {
+                timerBar.className = "h-full bg-emerald-400 transition-all duration-75 ease-linear";
+                timerCountdown.className = "font-mono-num text-zinc-300 font-medium";
+            } else if (percentage > 25) {
+                timerBar.className = "h-full bg-amber-400 transition-all duration-75 ease-linear";
+                timerCountdown.className = "font-mono-num text-amber-400 font-medium";
+            } else {
+                timerBar.className = "h-full bg-rose-500 transition-all duration-75 ease-linear";
+                timerCountdown.className = "font-mono-num text-rose-400 font-medium";
+            }
+        }
+
+        function checkAnswer() {
+            if (!isGameRunning) return;
+
+            const userValStr = numInput.value.trim();
+            if (userValStr === '') return;
+
+            const userVal = parseInt(userValStr, 10);
+
+            if (userVal === currentAnswer) {
+                sound.correct();
+                score++;
+                scoreDisplay.textContent = score;
+
+                if (score > highScore) {
+                    highScore = score;
+                    highScoreDisplay.textContent = highScore;
+                    localStorage.setItem('tabuada_2_9_highscore', highScore.toString());
+                }
+
+                feedbackText.textContent = `${currentFactorA} × ${currentFactorB} = ${currentAnswer}`;
+                feedbackText.className = "text-xs font-semibold text-emerald-400 mt-3 h-4 tracking-wide text-center";
+
+                nextQuestion();
+            } else {
+                handleMistake(`${currentFactorA} × ${currentFactorB} = ${currentAnswer}`);
+            }
+        }
+
+        function handleMistake(info) {
+            sound.wrong();
+            lives--;
+            updateLivesUI();
+
+            cardContainer.classList.remove('animate-shake');
+            void cardContainer.offsetWidth;
+            cardContainer.classList.add('animate-shake');
+
+            feedbackText.textContent = `Resposta correta: ${info}`;
+            feedbackText.className = "text-xs font-semibold text-rose-400 mt-3 h-4 tracking-wide text-center";
+
+            if (lives <= 0) {
+                triggerGameOver();
+            } else {
+                numInput.value = '';
+                nextQuestion();
+            }
+        }
+
+        function handleTimeout() {
+            handleMistake(`${currentFactorA} × ${currentFactorB} = ${currentAnswer}`);
+        }
+
+        function triggerGameOver() {
+            isGameRunning = false;
+            clearInterval(timerInterval);
+            sound.gameOver();
+
+            finalScore.textContent = score;
+            finalSpeed.textContent = `${calculateAllowedTime(score).toFixed(1)}s`;
+            finalBest.textContent = highScore;
+
+            gameOverOverlay.classList.remove('hidden');
+        }
+
+        function startGame() {
+            sound.init();
+            score = 0;
+            lives = 3;
+            loopCount = 0;
+            currentTableIndex = 0;
+            resetTabuadaLists();
+
+            scoreDisplay.textContent = score;
+            updateLivesUI();
+            
+            startOverlay.classList.add('hidden');
+            gameOverOverlay.classList.add('hidden');
+            
+            feedbackText.textContent = "Digite o resultado";
+            feedbackText.className = "text-xs font-medium text-zinc-400 mt-3 h-4 tracking-wide text-center";
+
+            isGameRunning = true;
+            nextQuestion();
+            startTimer();
+        }
+
+        function focusInput() {
+            numInput.focus();
+        }
+
+        // Validação imediata sem lag
+        numInput.addEventListener('input', () => {
+            const val = parseInt(numInput.value.trim(), 10);
+            if (!isNaN(val) && val === currentAnswer) {
+                checkAnswer();
+            }
+        });
+
+        numInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkAnswer();
+            }
+        });
+
+        // Teclado virtual
+        document.querySelectorAll('.key-btn[data-val]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!isGameRunning) return;
+                sound.click();
+                const val = btn.getAttribute('data-val');
+                if (numInput.value.length < 3) {
+                    numInput.value += val;
+                    numInput.dispatchEvent(new Event('input'));
+                }
+                focusInput();
+            });
+        });
+
+        btnClear.addEventListener('click', () => {
+            if (!isGameRunning) return;
+            sound.click();
+            numInput.value = numInput.value.slice(0, -1);
+            focusInput();
+        });
+
+        btnSubmit.addEventListener('click', () => {
+            if (!isGameRunning) return;
+            sound.click();
+            checkAnswer();
+        });
+
+        // Alternar Som
+        soundToggle.addEventListener('click', () => {
+            sound.init();
+            sound.enabled = !sound.enabled;
+            soundIcon.textContent = sound.enabled ? '🔊' : '🔇';
+            soundToggle.classList.toggle('opacity-40', !sound.enabled);
+        });
+
+        btnStart.addEventListener('click', startGame);
+        btnRestart.addEventListener('click', startGame);
+
+        window.addEventListener('click', (e) => {
+            if (isGameRunning && !e.target.closest('button')) {
+                focusInput();
+            }
+        });
+    </script>
+</body>
+</html>
